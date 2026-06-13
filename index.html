@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مغامرة مياو الى الطعمية</title> 
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #f3a712;
+            --secondary: #f06d06;
+            --accent: #ff5e6b;
+            --bg-color: #2d3e4b;
+        }
+
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-color);
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        .game-wrapper {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #1cb5e0 0%, #000851 100%);
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 95vw;
+            max-width: 600px;
+            aspect-ratio: 16 / 9;
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            border: 4px solid #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+            touch-action: none;
+        }
+
+        /* --- UI ELEMENTS --- */
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .hud-item {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 5px 15px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            min-width: 80px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .hud-icon {
+            font-size: 1.2rem;
+            display: inline-block;
+        }
+
+        .hud-value {
+            font-weight: 900;
+            font-size: 1.1rem;
+        }
+
+        /* --- WORLD --- */
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 200%;
+            height: 40px;
+            background: #5fa84a;
+            border-top: 4px solid #3d6e2e;
+            z-index: 10;
+        }
+
+        .cloud {
+            position: absolute;
+            background: white;
+            opacity: 0.8;
+            border-radius: 50px;
+            z-index: 1;
+        }
+
+        /* --- CHARACTERS --- */
+        #player {
+            position: absolute;
+            left: 10%;
+            width: 80px;
+            height: 80px;
+            bottom: 40px;
+            z-index: 20;
+            transition: transform 0.1s;
+        }
+
+        .obstacle {
+            position: absolute;
+            bottom: 40px;
+            width: 50px;
+            height: 50px;
+            z-index: 15;
+        }
+
+        /* --- SCREENS --- */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            text-align: center;
+        }
+
+        #startScreen { background: rgba(0,0,0,0.4); }
+
+        .btn {
+            background: var(--primary);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 5px 0 var(--secondary);
+            margin-top: 20px;
+        }
+
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 var(--secondary);
+        }
+
+        .skin-selector {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .skin-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #fff;
+            padding: 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .skin-btn.active {
+            background: var(--primary);
+            border-color: yellow;
+        }
+
+        .game-over-title {
+            font-size: 3rem;
+            color: var(--accent);
+            margin: 0;
+        }
+
+        @media (max-width: 600px) {
+            #player { width: 60px; height: 60px; }
+            .game-over-title { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-wrapper">
+    <div id="gameContainer">
+        <!-- HUD -->
+        <div id="hud">
+            <div class="hud-item">
+                <span class="hud-icon">🏆</span>
+                <span id="scoreValue" class="hud-value">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-icon">❤️</span>
+                <span id="livesCount" class="hud-value">3</span>
+            </div>
+        </div>
+
+        <!-- Layers -->
+        <div id="ground"></div>
+        <div id="player"></div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="overlay">
+            <h2> طعمية عمر</h2>
+            <P>القصة: خطيبتك قالتلك روح هاتلنا سندوتشين طعمية من عند الزعيم دلوقتي انت فنص الصحراء </P>
+            <p>اضغط للقفز وتجنب العوائق!</p>
+            <div class="skin-selector">
+                <div class="skin-btn active" onclick="selectSkin('duck', this)" id="btn-duck"></div>
+                <div class="skin-btn" onclick="selectSkin('elon', this)" id="btn-elon"></div>
+            </div>
+            <button class="btn" onclick="startGame()">إبدأ اللعب</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOver" class="overlay" style="display:none;">
+            <h1 class="game-over-title">خسرت!</h1>
+            <p style="font-size: 1.5rem;">مفيش طعمية ياضض</p>
+            <div style="margin: 15px 0;">
+                <div>النقاط: <span id="finalScore">0</span></div>
+                <div>أفضل نتيجة: <span id="highScore">0</span></div>
+            </div>
+            <button class="btn" onclick="startGame()">حاول مرة أخرى</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- ASSETS (SVG) ---
+    const DUCK_SVG = `
+        <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="85" r="12" fill="#333"/> <!-- Wheel -->
+            <circle cx="50" cy="85" r="6" fill="#666"/>
+            <path d="M30 70 L70 70 L60 85 L40 85 Z" fill="#E67E22"/> <!-- Bike Frame -->
+            <path d="M40 40 Q40 20 60 20 Q80 20 80 40 Q80 60 40 60 Z" fill="#FFD54F"/> <!-- Body -->
+            <circle cx="70" cy="35" r="15" fill="#FFD54F"/> <!-- Head -->
+            <path d="M80 35 L95 40 L80 45 Z" fill="#FF9800"/> <!-- Beak -->
+            <circle cx="75" cy="30" r="3" fill="black"/> <!-- Eye -->
+            <path d="M60 25 Q70 10 85 25" fill="none" stroke="#E74C3C" stroke-width="8"/> <!-- Helmet -->
+        </svg>`;
+
+    const ELON_SVG = `
+        <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="85" r="12" fill="#111"/> <!-- Cyber Wheel -->
+            <path d="M20 75 L80 75 L70 85 L30 85 Z" fill="#555"/> <!-- Cyber Frame -->
+            <rect x="30" y="30" width="40" height="40" rx="10" fill="#B0BEC5"/> <!-- Metallic Body -->
+            <circle cx="70" cy="35" r="15" fill="#B0BEC5"/> <!-- Head -->
+            <path d="M80 35 L95 35 L80 40 Z" fill="#444"/> <!-- Beak -->
+            <rect x="65" y="20" width="20" height="10" rx="5" fill="#37474F"/> <!-- Helmet -->
+            <text x="50" y="55" font-size="12" fill="white" font-family="Arial" font-weight="bold">X</text>
+        </svg>`;
+
+    const CACTUS_SVG = `
+        <svg viewBox="0 0 50 50">
+            <rect x="20" y="10" width="10" height="40" fill="#2D5A27" rx="5"/>
+            <path d="M10 25 Q10 35 20 35" fill="none" stroke="#2D5A27" stroke-width="8" stroke-linecap="round"/>
+            <path d="M40 20 Q40 30 30 30" fill="none" stroke="#2D5A27" stroke-width="8" stroke-linecap="round"/>
+        </svg>`;
+
+    // --- GAME STATE ---
+    const state = {
+        score: 0,
+        lives: 3,
+        highScore: localStorage.getItem('duck_highscore') || 0,
+        gameRunning: false,
+        playerY: 0,
+        playerVelocity: 0,
+        gravity: 0.6,
+        jumpPower: -12,
+        obstacles: [],
+        speed: 5,
+        skin: 'duck',
+        lastSpawn: 0
+    };
+
+    const nodes = {
+        container: document.getElementById('gameContainer'),
+        player: document.getElementById('player'),
+        score: document.getElementById('scoreValue'),
+        lives: document.getElementById('livesCount'),
+        startScreen: document.getElementById('startScreen'),
+        gameOver: document.getElementById('gameOver'),
+        finalScore: document.getElementById('finalScore'),
+        highScore: document.getElementById('highScore'),
+        btnDuck: document.getElementById('btn-duck'),
+        btnElon: document.getElementById('btn-elon')
+    };
+
+    // Initialize skins
+    nodes.btnDuck.innerHTML = DUCK_SVG;
+    nodes.btnElon.innerHTML = ELON_SVG;
+
+    function selectSkin(skin, btn) {
+        state.skin = skin;
+        document.querySelectorAll('.skin-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        nodes.player.innerHTML = skin === 'duck' ? DUCK_SVG : ELON_SVG;
+    }
+
+    function startGame() {
+        state.score = 0;
+        state.lives = 3;
+        state.speed = 5;
+        state.playerY = 0;
+        state.obstacles.forEach(o => o.remove());
+        state.obstacles = [];
+        state.gameRunning = true;
+        
+        nodes.startScreen.style.display = 'none';
+        nodes.gameOver.style.display = 'none';
+        nodes.player.innerHTML = state.skin === 'duck' ? DUCK_SVG : ELON_SVG;
+        
+        requestAnimationFrame(update);
+    }
+
+    function jump() {
+        if (state.playerY === 0 && state.gameRunning) {
+            state.playerVelocity = state.jumpPower;
+        }
+    }
+
+    function spawnObstacle() {
+        const now = Date.now();
+        if (now - state.lastSpawn > 1500 + Math.random() * 1000) {
+            const obs = document.createElement('div');
+            obs.className = 'obstacle';
+            obs.innerHTML = CACTUS_SVG;
+            obs.style.right = '-50px';
+            nodes.container.appendChild(obs);
+            state.obstacles.push(obs);
+            state.lastSpawn = now;
+        }
+    }
+
+    function update() {
+        if (!state.gameRunning) return;
+
+        // Player Physics
+        state.playerVelocity += state.gravity;
+        state.playerY -= state.playerVelocity;
+
+        if (state.playerY <= 0) {
+            state.playerY = 0;
+            state.playerVelocity = 0;
+        }
+        nodes.player.style.bottom = (40 + state.playerY) + 'px';
+
+        // Obstacles
+        spawnObstacle();
+        for (let i = state.obstacles.length - 1; i >= 0; i--) {
+            const obs = state.obstacles[i];
+            const currentRight = parseFloat(obs.style.right);
+            obs.style.right = (currentRight + state.speed) + 'px';
+
+            // Collision Detection
+            const rect1 = nodes.player.getBoundingClientRect();
+            const rect2 = obs.getBoundingClientRect();
+
+            // Narrower hitboxes for fairness
+            if (
+                rect1.left < rect2.right - 15 &&
+                rect1.right > rect2.left + 15 &&
+                rect1.top < rect2.bottom - 10 &&
+                rect1.bottom > rect2.top + 10
+            ) {
+                handleHit();
+                obs.remove();
+                state.obstacles.splice(i, 1);
+            }
+
+            // Remove off-screen
+            if (currentRight > nodes.container.offsetWidth) {
+                obs.remove();
+                state.obstacles.splice(i, 1);
+                state.score += 10;
+            }
+        }
+
+        // Difficulty
+        state.speed += 0.001;
+
+        // UI
+        nodes.score.innerText = Math.floor(state.score);
+        nodes.lives.innerText = state.lives;
+
+        requestAnimationFrame(update);
+    }
+
+    function handleHit() {
+        state.lives--;
+        // Visual feedback
+        nodes.container.style.backgroundColor = '#ff5e6b';
+        setTimeout(() => nodes.container.style.backgroundColor = '', 100);
+        
+        if (state.lives <= 0) {
+            endGame();
+        }
+    }
+
+    function endGame() {
+        state.gameRunning = false;
+        if (state.score > state.highScore) {
+            state.highScore = Math.floor(state.score);
+            localStorage.setItem('duck_highscore', state.highScore);
+        }
+        nodes.finalScore.innerText = Math.floor(state.score);
+        nodes.highScore.innerText = state.highScore;
+        nodes.gameOver.style.display = 'flex';
+    }
+
+    // Input listeners
+    window.addEventListener('keydown', (e) => { if(e.code === 'Space') jump(); });
+    nodes.container.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+    nodes.container.addEventListener('mousedown', jump);
+
+    // Initial player setup
+    nodes.player.innerHTML = DUCK_SVG;
+</script>
+
+</body>
+</html>
